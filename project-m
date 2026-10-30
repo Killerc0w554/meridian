@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Launch Meridian as a native desktop app.
+# Launch Project M as a native desktop app.
 set -euo pipefail
 here="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 # The desktop shell needs PyGObject, which the system Python provides.
 python=/usr/bin/python3
 if ! "$python" -c 'import gi' >/dev/null 2>&1; then
-  echo "Meridian: PyGObject (python-gobject) is required." >&2
+  echo "Project M: PyGObject (python-gobject) is required." >&2
   exit 1
 fi
 
-exec "$python" "$here/meridian_app.py" "$@"
+exec "$python" "$here/project_m_app.py" "$@"

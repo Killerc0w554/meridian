@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Meridian desktop app: a native GTK 3 window around the calendar UI.
+"""Project M desktop app: a native GTK 3 window around the calendar UI.
 
 The interface is served to an embedded WebKit view. It keeps the original
 private URI scheme so existing appointments retain their local-storage origin,
@@ -24,8 +24,8 @@ gi.require_version("WebKit2", "4.1")
 
 from gi.repository import Gdk, Gio, GLib, Gtk, WebKit2  # noqa: E402
 
-APP_ID = "com.meridian.Meridian"
-APP_NAME = "Meridian"
+APP_ID = "com.projectm.ProjectM"
+APP_NAME = "Project M"
 # Legacy internal scheme. Keeping it preserves the local-storage origin, so
 # appointments saved before the rename stay visible.
 SCHEME = "callendar"
@@ -34,6 +34,8 @@ START_PAGE = "index.html"
 DEFAULT_SIZE = (1280, 860)
 
 BASE_DIR = Path(__file__).resolve().parent
+# Legacy data locations are kept under the original "meridian" name so
+# existing appointments and window state survive the rebrand.
 CONFIG_DIR = Path(GLib.get_user_config_dir()) / "meridian"
 DATA_DIR = Path(GLib.get_user_data_dir()) / "meridian" / "webkit"
 CACHE_DIR = Path(GLib.get_user_cache_dir()) / "meridian" / "webkit"
@@ -150,10 +152,10 @@ def _was_maximized() -> bool:
         return False
 
 
-class MeridianWindow(Gtk.ApplicationWindow):
+class ProjectMWindow(Gtk.ApplicationWindow):
     def __init__(self, app: Gtk.Application, context: WebKit2.WebContext):
         super().__init__(application=app, title=APP_NAME)
-        self.set_icon_name("meridian")
+        self.set_icon_name("project-m")
         self.set_default_size(*_load_window_size())
 
         # The app draws its own title bar (the top bar in index.html), so the
@@ -168,7 +170,7 @@ class MeridianWindow(Gtk.ApplicationWindow):
         settings.set_javascript_can_access_clipboard(True)
         settings.set_enable_smooth_scrolling(True)
         settings.set_enable_developer_extras(
-            bool(os.environ.get("MERIDIAN_DEV") or os.environ.get("CALLENDAR_DEV"))
+            bool(os.environ.get("PROJECT_M_DEV") or os.environ.get("CALLENDAR_DEV"))
         )
 
         self.webview.connect("decide-policy", self._on_decide_policy)
@@ -190,15 +192,15 @@ class MeridianWindow(Gtk.ApplicationWindow):
         """Expose print and the custom title bar actions to the web view."""
 
         manager = self.webview.get_user_content_manager()
-        manager.register_script_message_handler("meridianNative")
-        manager.connect("script-message-received::meridianNative", self._on_native_message)
+        manager.register_script_message_handler("projectMNative")
+        manager.connect("script-message-received::projectMNative", self._on_native_message)
         manager.add_script(
             WebKit2.UserScript.new(
                 # Flag the page before first paint so the window controls are
                 # laid out with the rest of the top bar instead of popping in.
                 "try { document.documentElement.dataset.native = 'true'; } catch (e) {};"
                 "window.print = function () {"
-                "  window.webkit.messageHandlers.meridianNative.postMessage('print');"
+                "  window.webkit.messageHandlers.projectMNative.postMessage('print');"
                 "};",
                 WebKit2.UserContentInjectedFrames.TOP_FRAME,
                 WebKit2.UserScriptInjectionTime.START,
@@ -288,8 +290,8 @@ class MeridianWindow(Gtk.ApplicationWindow):
 
         maximized = "true" if self.is_maximized() else "false"
         script = (
-            "window.meridianWindowState && "
-            f"window.meridianWindowState({{ maximized: {maximized} }});"
+            "window.projectMWindowState && "
+            f"window.projectMWindowState({{ maximized: {maximized} }});"
         )
         try:
             self.webview.evaluate_javascript(
@@ -442,11 +444,11 @@ class MeridianWindow(Gtk.ApplicationWindow):
 # --------------------------------------------------------------------------
 
 
-class MeridianApp(Gtk.Application):
+class ProjectMApp(Gtk.Application):
     def __init__(self) -> None:
         super().__init__(application_id=APP_ID, flags=Gio.ApplicationFlags.FLAGS_NONE)
         self.context: WebKit2.WebContext | None = None
-        self.window: MeridianWindow | None = None
+        self.window: ProjectMWindow | None = None
 
     def do_startup(self) -> None:
         Gtk.Application.do_startup(self)
@@ -456,7 +458,7 @@ class MeridianApp(Gtk.Application):
     def do_activate(self) -> None:
         if self.window is None:
             assert self.context is not None
-            self.window = MeridianWindow(self, self.context)
+            self.window = ProjectMWindow(self, self.context)
             self.window.connect("destroy", self._forget_window)
         self.window.present()
 
@@ -464,7 +466,7 @@ class MeridianApp(Gtk.Application):
         self.window = None
 
     def _on_download_started(self, _context, download: WebKit2.Download) -> None:
-        suggested = download.get_suggested_filename() or "meridian-download"
+        suggested = download.get_suggested_filename() or "project-m-download"
         folder = (
             GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_DOWNLOADS)
             or str(Path.home())
@@ -497,16 +499,16 @@ class MeridianApp(Gtk.Application):
         download.connect(
             "failed",
             lambda _download, error: print(
-                f"Meridian: download failed: {error.message}", file=sys.stderr
+                f"Project M: download failed: {error.message}", file=sys.stderr
             ),
         )
 
 
 def main() -> int:
-    GLib.set_prgname("meridian")
+    GLib.set_prgname("project-m")
     GLib.set_application_name(APP_NAME)
-    Gtk.Window.set_default_icon_name("meridian")
-    return MeridianApp().run(sys.argv)
+    Gtk.Window.set_default_icon_name("project-m")
+    return ProjectMApp().run(sys.argv)
 
 
 if __name__ == "__main__":

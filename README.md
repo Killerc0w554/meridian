@@ -1,4 +1,4 @@
-# Meridian
+# Project M
 
 A 24-hour appointment calendar that keeps the phone number on the appointment.
 Click a time slot, add the caller, and call them straight from the schedule.
@@ -7,18 +7,18 @@ No build step, no account, and no cloud. Your calendar stays on this machine.
 
 ## Run it
 
-Meridian is a native desktop app: a GTK window with an embedded WebKit view.
+Project M is a native desktop app: a GTK window with an embedded WebKit view.
 It needs no browser and no local web server.
 
-Launch it from your app menu (search for **Meridian**) or from a terminal:
+Launch it from your app menu (search for **Project M**) or from a terminal:
 
 ```bash
-~/Work/meridian/meridian
+~/Work/project-m/project-m
 ```
 
 On this machine the launcher is installed at
-`~/.local/share/applications/meridian.desktop` and the icon at
-`~/.local/share/icons/hicolor/scalable/apps/meridian.svg`.
+`~/.local/share/applications/project-m.desktop` and the icon at
+`~/.local/share/icons/hicolor/scalable/apps/project-m.svg`.
 
 It uses the system `gtk3`, `webkit2gtk-4.1`, and `python-gobject` packages.
 
@@ -27,7 +27,7 @@ It uses the system `gtk3`, `webkit2gtk-4.1`, and `python-gobject` packages.
 The interface is also still a plain static site:
 
 ```bash
-cd meridian
+cd project-m
 python3 -m http.server 8765
 ```
 
@@ -96,7 +96,8 @@ from the desktop app.
 
 ## Where the data lives
 
-The desktop app stores its calendar in its own WebKit profile:
+The desktop app stores its calendar in its own WebKit profile (kept under the
+original `meridian` folder so existing appointments survive the rebrand):
 
 ```
 ~/.local/share/meridian/webkit/
@@ -123,24 +124,23 @@ them like any other appointment.
 ## Files
 
 ```
-meridian                        launcher (starts the native app)
-meridian_app.py                 GTK window, callendar:// asset serving, native dialogs
-meridian.svg                    application icon and logo source
-meridian-wordmark.svg           custom wordmark used in the app header
-meridian-wordmark-preview.png   header and light/dark wordmark preview
-meridian-logo.png               raster preview of the logo
+project-m launcher (starts the native app)
+project_m_app.py GTK window, callendar:// asset serving, native dialogs
+project-m.svg application icon and logo source
+project-m-wordmark.svg custom wordmark used in the app header
+project-m-wordmark-preview.png header and light/dark wordmark preview
+project-m-logo.png raster preview of the logo
 index.html                      markup and inline icons
 styles.css                      layout, themes, responsive and print styles
 app.js                          calendar rendering, scheduling, storage, import/export
 ```
 
-The header wordmark is drawn from JetBrains Mono outlines converted to vector
-paths, using the wide tracking of the 04 Technical direction. The path lives in
-`meridian-wordmark.svg` and is inlined into `index.html`, so the font is not
-required at runtime. Its gradient follows the light and dark palettes in
-`styles.css`.
+The header wordmark is set in JetBrains Mono with wide tracking, in the style
+of the 04 Technical direction. The source lives in `project-m-wordmark.svg`
+and is inlined into `index.html`; its gradient follows the light and dark
+palettes in `styles.css`.
 
 To remove the desktop integration, delete
-`~/.local/share/applications/meridian.desktop` and
-`~/.local/share/icons/hicolor/scalable/apps/meridian.svg`. The calendar data
+`~/.local/share/applications/project-m.desktop` and
+`~/.local/share/icons/hicolor/scalable/apps/project-m.svg`. The calendar data
 stays in `~/.local/share/meridian/` until you delete that folder too.

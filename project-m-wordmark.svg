@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg class="brand-wordmark" role="img" aria-label="Project M" xmlns="http://www.w3.org/2000/svg" width="5743" height="720" viewBox="0 -580 5743 720">
+<defs>
+<linearGradient id="wmInk" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="5743" y2="0">
+  <stop offset="0" class="wm-ink-1" stop-color="#eafffb"/>
+  <stop offset="0.44" class="wm-ink-2" stop-color="#f7fffd"/>
+  <stop offset="1" class="wm-ink-3" stop-color="#5eead4"/>
+</linearGradient>
+</defs>
+<title>Project M</title>
+<text x="0" y="0" fill="url(#wmInk)" fill-opacity="1" font-family="'JetBrainsMono Nerd Font','JetBrains Mono',monospace" font-size="730" font-weight="400" letter-spacing="240">Project M</text>
+</svg>

@@ -1,4 +1,4 @@
-/* Meridian — 24-hour appointment calendar */
+/* Project M — 24-hour appointment calendar */
 
 /* Keep the hidden attribute authoritative. Without this, class rules such as
    .conflict { display: flex } override the browser's [hidden] style and leave

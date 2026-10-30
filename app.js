@@ -1,4 +1,4 @@
-/* Meridian — 24-hour appointment calendar
+/* Project M — 24-hour appointment calendar
    No build step, no dependencies. Data lives in localStorage. */
 (() => {
   'use strict';
@@ -370,7 +370,7 @@
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify(state.events));
     } catch (err) {
-      console.error('Meridian: could not save appointments', err);
+      console.error('Project M: could not save appointments', err);
     }
   }
 
@@ -1328,7 +1328,7 @@
     const lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Meridian//24-hour appointment calendar//EN',
+      'PRODID:-//Project M//24-hour appointment calendar//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
     ];
@@ -1342,7 +1342,7 @@
       ].filter(Boolean).join('\n\n');
 
       lines.push('BEGIN:VEVENT');
-      lines.push(`UID:${ev.id}@meridian.local`);
+      lines.push(`UID:${ev.id}@project-m.local`);
       lines.push(`DTSTAMP:${stamp}`);
       lines.push(`DTSTART:${icsLocal(ev.date, ev.start)}`);
       lines.push(`DTEND:${icsLocal(ev.date, ev.end)}`);
@@ -1358,13 +1358,13 @@
 
   function exportJSON() {
     const payload = {
-      app: 'meridian',
+      app: 'project-m',
       version: 1,
       exportedAt: new Date().toISOString(),
       events: state.events,
     };
     download(
-      `meridian-backup-${isoDate(new Date())}.json`,
+      `project-m-backup-${isoDate(new Date())}.json`,
       JSON.stringify(payload, null, 2),
       'application/json'
     );
@@ -1373,7 +1373,7 @@
   function exportAllICS() {
     if (!state.events.length) return;
     download(
-      `meridian-${isoDate(new Date())}.ics`,
+      `project-m-${isoDate(new Date())}.ics`,
       buildICS(state.events),
       'text/calendar;charset=utf-8'
     );
@@ -1787,7 +1787,7 @@
   function setupWindowChrome() {
     let bridge = null;
     try {
-      bridge = window.webkit?.messageHandlers?.meridianNative || null;
+      bridge = window.webkit?.messageHandlers?.projectMNative || null;
     } catch (error) {
       bridge = null;
     }
@@ -1813,7 +1813,7 @@
     if (maxBtn) maxBtn.addEventListener('click', () => send('window-toggle-maximize'));
     if (closeBtn) closeBtn.addEventListener('click', () => send('window-close'));
 
-    window.meridianWindowState = (state) => {
+    window.projectMWindowState = (state) => {
       const isMaximized = !!(state && state.maximized);
       root.dataset.windowMaximized = String(isMaximized);
       if (maxBtn) {
