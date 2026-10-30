@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="A 24-hour appointment calendar with phone numbers built in. Click a time slot, add a caller, and call them from the schedule.">
   <meta name="color-scheme" content="dark light">
-  <meta name="theme-color" content="#04060a">
+  <meta name="theme-color" content="#0a0c11">
   <title>Project M — 24-hour appointment calendar</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5.5' fill='%2304060a'/%3E%3Cpath d='M6 17V7l6 7 6-7v10' fill='none' stroke='%235eead4' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="styles.css">
@@ -44,6 +44,7 @@
         <button type="button" data-view="day" aria-pressed="false">Day</button>
         <button type="button" data-view="week" aria-pressed="false">Week</button>
         <button type="button" data-view="month" aria-pressed="true">Month</button>
+        <button type="button" data-view="pipeline" aria-pressed="false">Pipeline</button>
       </div>
 
       <div class="menu-wrap">
@@ -75,6 +76,10 @@
           <button type="button" role="menuitem" data-action="print">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"></path><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
             Print schedule
+          </button>
+          <button type="button" role="menuitem" data-action="reset-stages" id="resetStagesItem" hidden>
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"></path><path d="M3 4v5h5"></path></svg>
+            Reset stage names
           </button>
           <div class="menu-sep" role="separator"></div>
           <div class="menu-label">Data</div>
@@ -186,17 +191,8 @@
         </div>
 
         <div class="field">
-          <span class="field-label" id="evStatusLabel">Hiring status</span>
-          <div class="status-toggle" id="statusToggle" role="group" aria-labelledby="evStatusLabel">
-            <button type="button" data-status="hiring" aria-pressed="false">
-              <span class="status-dot" aria-hidden="true"></span>
-              Hiring
-            </button>
-            <button type="button" data-status="not-hiring" aria-pressed="false">
-              <span class="status-dot" aria-hidden="true"></span>
-              Not hiring
-            </button>
-          </div>
+          <label for="evStage">Pipeline stage</label>
+          <select id="evStage" name="stage"></select>
         </div>
 
         <div class="form-row">
@@ -235,13 +231,14 @@
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="M7 10l5 5 5-5M12 15V3"></path></svg>
           Export .ics
         </button>
-        <button type="button" class="btn ghost" id="addAnotherBtn" title="Save this appointment and start another at the same time">
+        <button type="button" class="btn ghost" id="addAnotherBtn" title="Save this appointment and start another at the same time" aria-label="Save and add another appointment">
           <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
-          Save &amp; add another
+          Save &amp; new
         </button>
-        <div class="foot-spacer"></div>
-        <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
-        <button type="submit" class="btn primary" id="saveBtn">Add appointment</button>
+        <div class="foot-actions">
+          <button type="button" class="btn ghost" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn primary" id="saveBtn">Add appointment</button>
+        </div>
       </footer>
     </form>
   </dialog>

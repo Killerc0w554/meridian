@@ -15,29 +15,116 @@
     '167,139,250',  // violet
     '251,191,36',   // amber
     '251,113,133',  // rose
-    '34,211,238',   // cyan
-    '163,230,53',   // lime
+    '56,189,248',   // sky
+    '52,211,153',   // emerald
     '251,146,60',   // orange
   ];
 
   const PHONE_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>';
 
-  const STATUS_LABELS = {
-    hiring: 'Hiring',
-    'not-hiring': 'Not hiring',
-  };
+  // Pipeline stages, in funnel order. The keys are fixed — they are stored on
+  // every appointment — while the labels are user-editable and kept in
+  // settings, so renaming a stage never touches existing data.
+  // `migrateStage` folds the old two-value "hiring / not-hiring" status into
+  // these so existing data keeps working.
+  const DEFAULT_STAGES = [
+    { key: 'applied', label: 'Applied' },
+    { key: 'screening', label: 'Screen' },
+    { key: 'interview', label: 'Interview' },
+    { key: 'offer', label: 'Offer' },
+    { key: 'hired', label: 'Hired' },
+    { key: 'rejected', label: 'Rejected' },
+  ];
 
-  function statusKey(value) {
-    return value === 'hiring' || value === 'not-hiring' ? value : '';
+  const STAGE_LABEL = {};
+  const STAGE_KEYS = [];
+  for (const stage of DEFAULT_STAGES) {
+    STAGE_LABEL[stage.key] = stage.label;
+    STAGE_KEYS.push(stage.key);
   }
 
-  function statusLabel(value) {
-    const key = statusKey(value);
-    return key ? STATUS_LABELS[key] : '';
+  const STAGE_NAME_MAX = 24;
+
+  function stageKey(value) {
+    const key = String(value || '');
+    return STAGE_KEYS.includes(key) ? key : '';
+  }
+
+  function cleanStageName(value) {
+    return String(value == null ? '' : value)
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, STAGE_NAME_MAX);
+  }
+
+  // A stage's display name: the custom name when one is set, else the default.
+  function stageLabel(value) {
+    const key = stageKey(value);
+    if (!key) return '';
+    return state.settings.stageLabels[key] || STAGE_LABEL[key];
+  }
+
+  // Every appointment belongs to a stage. Older records (and anything saved
+  // before the pipeline existed) fall back to the first stage.
+  function pipelineStage(ev) {
+    return stageKey(ev.stage) || STAGE_KEYS[0];
+  }
+
+  function hasCustomStageLabels() {
+    return Object.keys(state.settings.stageLabels).length > 0;
+  }
+
+  function setStageLabel(key, value) {
+    if (!STAGE_KEYS.includes(key)) return;
+    const name = cleanStageName(value);
+    // An empty name (or one that matches the default again) drops the override.
+    if (!name || name === STAGE_LABEL[key]) delete state.settings.stageLabels[key];
+    else state.settings.stageLabels[key] = name;
+    saveSettings();
+    buildStageOptions();
+    syncStageMenu();
+    if (state.view === 'pipeline') renderPipeline();
+  }
+
+  function resetStageLabels() {
+    state.settings.stageLabels = {};
+    saveSettings();
+    buildStageOptions();
+    syncStageMenu();
+    if (state.view === 'pipeline') renderPipeline();
+  }
+
+  function syncStageMenu() {
+    if (el.resetStagesItem) el.resetStagesItem.hidden = !hasCustomStageLabels();
+  }
+
+  // Keep the editor's stage dropdown in sync with the current names.
+  function buildStageOptions() {
+    if (!el.stageSelect) return;
+    const current = stageKey(el.stageSelect.value) || STAGE_KEYS[0];
+    const frag = document.createDocumentFragment();
+
+    for (const key of STAGE_KEYS) {
+      const option = document.createElement('option');
+      option.value = key;
+      option.textContent = stageLabel(key);
+      frag.append(option);
+    }
+
+    el.stageSelect.replaceChildren(frag);
+    el.stageSelect.value = current;
+  }
+
+  function migrateStage(value) {
+    const key = String(value || '');
+    if (STAGE_KEYS.includes(key)) return key;
+    if (key === 'hiring') return 'interview';
+    if (key === 'not-hiring') return 'rejected';
+    return '';
   }
 
   function searchHaystack(ev) {
-    return `${ev.title} ${ev.phone} ${ev.notes} ${statusLabel(ev.status)}`.toLowerCase();
+    return `${ev.title} ${ev.phone} ${ev.notes} ${stageLabel(ev.stage)}`.toLowerCase();
   }
 
   const el = {
@@ -62,6 +149,7 @@
     menuBtn: document.getElementById('menuBtn'),
     menu: document.getElementById('menu'),
     clockItem: document.getElementById('clockItem'),
+    resetStagesItem: document.getElementById('resetStagesItem'),
     themeItem: document.getElementById('themeItem'),
     dialog: document.getElementById('eventDialog'),
     form: document.getElementById('eventForm'),
@@ -72,8 +160,7 @@
     startInput: document.getElementById('evStart'),
     endInput: document.getElementById('evEnd'),
     notesInput: document.getElementById('evNotes'),
-    statusToggle: document.getElementById('statusToggle'),
-    statusButtons: Array.from(document.querySelectorAll('#statusToggle [data-status]')),
+    stageSelect: document.getElementById('evStage'),
     durationNote: document.getElementById('durationNote'),
     conflictNote: document.getElementById('conflictNote'),
     conflictText: document.getElementById('conflictText'),
@@ -92,7 +179,7 @@
     view: 'month',
     cursor: startOfDay(new Date()),
     events: [],
-    settings: { clock24: false, theme: null },
+    settings: { clock24: false, theme: null, stageLabels: {} },
     query: '',
     editingId: null,
     nextUpId: null,
@@ -305,12 +392,19 @@
   function loadSettings() {
     state.settings.clock24 = defaultClock24();
     state.settings.theme = null;
+    state.settings.stageLabels = {};
     try {
       const raw = localStorage.getItem(SETTINGS_KEY);
       if (!raw) return;
       const parsed = JSON.parse(raw);
       if (typeof parsed.clock24 === 'boolean') state.settings.clock24 = parsed.clock24;
       if (parsed.theme === 'light' || parsed.theme === 'dark') state.settings.theme = parsed.theme;
+      if (parsed.stageLabels && typeof parsed.stageLabels === 'object') {
+        for (const key of STAGE_KEYS) {
+          const name = cleanStageName(parsed.stageLabels[key]);
+          if (name && name !== STAGE_LABEL[key]) state.settings.stageLabels[key] = name;
+        }
+      }
     } catch (err) {
       /* storage unavailable — keep defaults */
     }
@@ -343,7 +437,7 @@
       title: String(raw.title || 'Appointment').slice(0, 120).trim() || 'Appointment',
       phone: String(raw.phone || '').slice(0, 60).trim(),
       notes: String(raw.notes || '').slice(0, 2000),
-      status: statusKey(raw.status),
+      stage: migrateStage(raw.stage !== undefined ? raw.stage : raw.status),
     };
     if (Number.isInteger(raw.color)) ev.color = raw.color;
     return ev;
@@ -400,6 +494,7 @@
         title: 'Intro call — Dana Whitfield',
         phone: '+1 415 555 0132',
         notes: 'Sample appointment. Ask about timeline, team size, and budget.',
+        stage: 'interview',
         color: 0,
       },
       {
@@ -409,6 +504,7 @@
         title: 'Follow-up — Marcus Lee',
         phone: '+1 212 555 0188',
         notes: 'Sample appointment. Send the proposal beforehand.',
+        stage: 'offer',
         color: 2,
       },
       {
@@ -418,6 +514,7 @@
         title: 'Product walkthrough — Priya Raman',
         phone: '+1 650 555 0117',
         notes: 'Sample appointment. Screen share the scheduling flow.',
+        stage: 'screening',
         color: 3,
       },
     ];
@@ -430,7 +527,7 @@
 
   function visibleDays() {
     if (state.view === 'month') return monthGridDays(state.cursor);
-    if (state.view === 'day') return [startOfDay(state.cursor)];
+    if (state.view === 'day' || state.view === 'pipeline') return [startOfDay(state.cursor)];
     const start = startOfWeek(state.cursor);
     return Array.from({ length: 7 }, (_, index) => addDays(start, index));
   }
@@ -485,7 +582,7 @@
 
   function renderEvent(ev, layout) {
     const duration = ev.end - ev.start;
-    const status = statusKey(ev.status);
+    const stage = stageKey(ev.stage);
     const node = document.createElement('div');
     node.className = 'event';
     if (duration <= 30) node.classList.add('compact');
@@ -495,7 +592,7 @@
     node.setAttribute('role', 'button');
     node.setAttribute(
       'aria-label',
-      `${ev.title}, ${formatTime(ev.start)} to ${formatTime(ev.end)}${status ? `, ${STATUS_LABELS[status]}` : ''}${ev.phone ? `, ${ev.phone}` : ''}`
+      `${ev.title}, ${formatTime(ev.start)} to ${formatTime(ev.end)}${stage ? `, ${stageLabel(stage)}` : ''}${ev.phone ? `, ${ev.phone}` : ''}`
     );
     node.style.setProperty('--top', `${(ev.start / DAY_MIN) * 100}%`);
     node.style.setProperty('--height', `${(Math.max(duration, SNAP) / DAY_MIN) * 100}%`);
@@ -519,18 +616,18 @@
 
     node.append(time, title);
 
-    if (status) {
+    if (stage) {
       node.classList.add('has-status');
       const badge = document.createElement('span');
       badge.className = 'event-status';
-      badge.dataset.status = status;
-      badge.title = STATUS_LABELS[status];
+      badge.dataset.stage = stage;
+      badge.title = stageLabel(stage);
       const dot = document.createElement('span');
       dot.className = 'status-dot';
       dot.setAttribute('aria-hidden', 'true');
       const text = document.createElement('span');
       text.className = 'status-text';
-      text.textContent = STATUS_LABELS[status];
+      text.textContent = stageLabel(stage);
       badge.append(dot, text);
       node.append(badge);
     }
@@ -555,17 +652,17 @@
   }
 
   function renderMonthEvent(ev) {
-    const status = statusKey(ev.status);
+    const stage = stageKey(ev.stage);
     const chip = document.createElement('div');
     chip.className = 'md-event';
     chip.dataset.id = ev.id;
     chip.tabIndex = 0;
     chip.setAttribute('role', 'button');
     chip.style.setProperty('--rgb', colorFor(ev));
-    chip.title = `${formatTime(ev.start)} – ${formatTime(ev.end)} · ${ev.title}${status ? ` · ${STATUS_LABELS[status]}` : ''}${ev.phone ? ` · ${ev.phone}` : ''}`;
+    chip.title = `${formatTime(ev.start)} – ${formatTime(ev.end)} · ${ev.title}${stage ? ` · ${stageLabel(stage)}` : ''}${ev.phone ? ` · ${ev.phone}` : ''}`;
     chip.setAttribute(
       'aria-label',
-      `${formatTime(ev.start)} ${ev.title}${status ? `, ${STATUS_LABELS[status]}` : ''}${ev.phone ? `, ${ev.phone}` : ''}. Edit appointment.`
+      `${formatTime(ev.start)} ${ev.title}${stage ? `, ${stageLabel(stage)}` : ''}${ev.phone ? `, ${ev.phone}` : ''}. Edit appointment.`
     );
 
     const time = document.createElement('span');
@@ -574,15 +671,15 @@
 
     const title = document.createElement('span');
     title.className = 'md-title';
-    if (status) {
+    if (stage) {
       const dot = document.createElement('span');
       dot.className = 'md-status';
-      dot.dataset.status = status;
-      dot.title = STATUS_LABELS[status];
+      dot.dataset.stage = stage;
+      dot.title = stageLabel(stage);
       title.append(dot);
     }
     title.append(document.createTextNode(ev.title));
-    title.title = `${ev.title}${status ? ` — ${STATUS_LABELS[status]}` : ''}`;
+    title.title = `${ev.title}${stage ? ` — ${stageLabel(stage)}` : ''}`;
 
     chip.append(time, title);
 
@@ -612,6 +709,7 @@
 
     el.range.textContent = formatRange(days);
     el.range.title = el.range.textContent;
+    el.grid.classList.remove('is-pipeline');
     el.grid.classList.add('is-month');
     el.grid.style.setProperty('--cols', '7');
     el.grid.setAttribute('aria-label', 'Month calendar');
@@ -709,12 +807,200 @@
     updateNextUp();
   }
 
+  function pipelineColumnLabel(column) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'pipeline-col-label is-editable';
+    button.textContent = column.label;
+    button.title = `Rename "${column.label}"`;
+    button.setAttribute('aria-label', `Rename stage ${column.label}`);
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      startStageRename(button, column);
+    });
+    return button;
+  }
+
+  // Swap a column header for a text field. Enter or clicking away saves,
+  // Escape throws the edit away.
+  function startStageRename(button, column) {
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'pipeline-col-rename';
+    input.value = column.label;
+    input.maxLength = STAGE_NAME_MAX;
+    input.setAttribute('aria-label', `Stage name for ${column.label}`);
+    button.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let settled = false;
+    const finish = (commit) => {
+      if (settled) return;
+      settled = true;
+      if (commit) {
+        setStageLabel(column.key, input.value);
+      } else if (state.view === 'pipeline') {
+        renderPipeline();
+      }
+    };
+
+    input.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        finish(true);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        finish(false);
+      }
+    });
+    input.addEventListener('blur', () => finish(true));
+  }
+
+  function renderPipelineCard(ev) {
+    const card = document.createElement('div');
+    card.className = 'pipeline-card';
+    card.dataset.id = ev.id;
+    card.draggable = true;
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    const stage = pipelineStage(ev);
+    card.setAttribute(
+      'aria-label',
+      `${ev.title}, ${stageLabel(stage)}${ev.phone ? `, ${ev.phone}` : ''}. Drag to move or activate to edit.`
+    );
+
+    const title = document.createElement('span');
+    title.className = 'pipeline-card-title';
+    title.textContent = ev.title;
+    title.title = ev.title;
+    card.append(title);
+
+    const when = document.createElement('span');
+    when.className = 'pipeline-card-when';
+    if (ev.date === isoDate(new Date())) {
+      when.textContent = `Today · ${formatTime(ev.start)}`;
+    } else {
+      const dateLabel = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' })
+        .format(parseISODate(ev.date));
+      when.textContent = `${dateLabel} · ${formatTime(ev.start)}`;
+    }
+    card.append(when);
+
+    // The call button floats in the corner so long names keep the full width.
+    if (ev.phone && hasDialable(ev.phone)) {
+      const phone = document.createElement('a');
+      phone.className = 'pipeline-card-phone';
+      phone.href = telHref(ev.phone);
+      phone.title = `Call ${ev.phone}`;
+      phone.setAttribute('aria-label', `Call ${ev.phone}`);
+      phone.innerHTML = PHONE_ICON;
+      phone.addEventListener('click', (event) => event.stopPropagation());
+      card.append(phone);
+      card.classList.add('has-phone');
+    }
+
+    if (ev.notes) {
+      const notes = document.createElement('p');
+      notes.className = 'pipeline-card-notes';
+      notes.textContent = ev.notes.replace(/\s+/g, ' ').trim();
+      card.append(notes);
+    }
+
+    card.addEventListener('dragstart', (event) => {
+      event.dataTransfer.setData('text/plain', ev.id);
+      event.dataTransfer.effectAllowed = 'move';
+      card.classList.add('is-dragging');
+    });
+    card.addEventListener('dragend', () => card.classList.remove('is-dragging'));
+
+    return card;
+  }
+
+  function renderPipeline() {
+    el.grid.classList.remove('is-month');
+    el.grid.classList.add('is-pipeline');
+    el.range.textContent = 'Pipeline';
+    el.range.title = 'Pipeline';
+    el.grid.setAttribute('aria-label', 'Candidate pipeline');
+
+    const columns = STAGE_KEYS.map((key) => ({ key, label: stageLabel(key) }));
+    const query = state.query.trim().toLowerCase();
+    const events = state.events
+      .filter((ev) => !query || searchHaystack(ev).includes(query))
+      .sort((a, b) => (a.date !== b.date ? (a.date < b.date ? -1 : 1) : a.start - b.start));
+
+    const frag = document.createDocumentFragment();
+
+    for (const column of columns) {
+      const list = events.filter((ev) => pipelineStage(ev) === column.key);
+      const col = document.createElement('section');
+      col.className = 'pipeline-col';
+      col.dataset.stage = column.key;
+
+      const head = document.createElement('header');
+      head.className = 'pipeline-col-head';
+      const dot = document.createElement('span');
+      dot.className = 'pipeline-col-dot';
+      dot.setAttribute('aria-hidden', 'true');
+      const label = pipelineColumnLabel(column);
+      const count = document.createElement('span');
+      count.className = 'pipeline-col-count';
+      count.textContent = String(list.length);
+      count.title = `${list.length} ${list.length === 1 ? 'appointment' : 'appointments'}`;
+      head.append(dot, label, count);
+      col.append(head);
+
+      const body = document.createElement('div');
+      body.className = 'pipeline-col-body';
+      if (list.length) {
+        for (const ev of list) body.append(renderPipelineCard(ev));
+      } else {
+        const empty = document.createElement('p');
+        empty.className = 'pipeline-col-empty';
+        empty.textContent = 'Empty';
+        body.append(empty);
+      }
+      col.append(body);
+
+      col.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        col.classList.add('is-drag-over');
+      });
+      col.addEventListener('dragleave', () => col.classList.remove('is-drag-over'));
+      col.addEventListener('drop', (event) => {
+        event.preventDefault();
+        col.classList.remove('is-drag-over');
+        const id = event.dataTransfer.getData('text/plain');
+        const ev = state.events.find((item) => item.id === id);
+        if (!ev) return;
+        ev.stage = column.key;
+        saveEvents();
+        renderPipeline();
+        updateNextUp();
+      });
+
+      frag.append(col);
+    }
+
+    el.grid.replaceChildren(frag);
+    state.renderedDay = isoDate(new Date());
+    updateNextUp();
+  }
+
   function render(options = {}) {
+    if (state.view === 'pipeline') {
+      renderPipeline();
+      return;
+    }
     if (state.view === 'month') {
       renderMonth(options);
       return;
     }
     el.grid.classList.remove('is-month');
+    el.grid.classList.remove('is-pipeline');
     const preserveScroll = options.preserveScroll !== false;
     const previousScroll = preserveScroll ? el.scroll.scrollTop : 0;
     const days = visibleDays();
@@ -910,21 +1196,21 @@
     el.nextUpTitle.title = ev.title;
     el.nextUpMain.dataset.id = ev.id;
 
-    const status = statusKey(ev.status);
-    el.nextUpStatus.hidden = !status;
-    if (status) {
-      el.nextUpStatus.dataset.status = status;
-      el.nextUpStatus.textContent = STATUS_LABELS[status];
-      el.nextUpStatus.title = STATUS_LABELS[status];
+    const stage = stageKey(ev.stage);
+    el.nextUpStatus.hidden = !stage;
+    if (stage) {
+      el.nextUpStatus.dataset.stage = stage;
+      el.nextUpStatus.textContent = stageLabel(stage);
+      el.nextUpStatus.title = stageLabel(stage);
     } else {
-      delete el.nextUpStatus.dataset.status;
+      delete el.nextUpStatus.dataset.stage;
       el.nextUpStatus.textContent = '';
       el.nextUpStatus.removeAttribute('title');
     }
 
     el.nextUpMain.setAttribute(
       'aria-label',
-      `${when}: ${ev.title}${status ? `, ${STATUS_LABELS[status]}` : ''}. Edit appointment.`
+      `${when}: ${ev.title}${stage ? `, ${stageLabel(stage)}` : ''}. Edit appointment.`
     );
 
     if (ev.phone && hasDialable(ev.phone)) {
@@ -946,6 +1232,7 @@
   }
 
   function scrollToRelevantTime() {
+    if (state.view === 'pipeline') return;
     if (state.view === 'month') {
       el.scroll.scrollTop = 0;
       return;
@@ -969,7 +1256,7 @@
    * ------------------------------------------------------------------ */
 
   function setView(view) {
-    if (view !== 'day' && view !== 'week' && view !== 'month') return;
+    if (view !== 'day' && view !== 'week' && view !== 'month' && view !== 'pipeline') return;
     state.view = view;
     syncViewButtons();
     render({ preserveScroll: false });
@@ -980,12 +1267,18 @@
     el.viewButtons.forEach((button) => {
       button.setAttribute('aria-pressed', String(button.dataset.view === state.view));
     });
+    const pipeline = state.view === 'pipeline';
+    el.prev.hidden = pipeline;
+    el.next.hidden = pipeline;
+    el.today.hidden = pipeline;
+    if (pipeline) return;
     const suffix = state.view;
     el.prev.setAttribute('aria-label', `Previous ${suffix}`);
     el.next.setAttribute('aria-label', `Next ${suffix}`);
   }
 
   function step(direction) {
+    if (state.view === 'pipeline') return;
     if (state.view === 'month') {
       state.cursor = addMonths(state.cursor, direction);
     } else {
@@ -997,6 +1290,7 @@
   }
 
   function goToday() {
+    if (state.view === 'pipeline') return;
     state.cursor = startOfDay(new Date());
     render({ preserveScroll: false });
     scrollToRelevantTime();
@@ -1048,8 +1342,7 @@
     el.startInput.value = minutesToInput(data.start);
     el.endInput.value = minutesToInput(data.end);
     el.notesInput.value = existing ? existing.notes : '';
-    el.form.dataset.status = existing ? statusKey(existing.status) : '';
-    syncStatusButtons();
+    el.stageSelect.value = existing ? pipelineStage(existing) : STAGE_KEYS[0];
     el.deleteBtn.hidden = !existing;
     el.icsBtn.hidden = !existing;
     el.saveBtn.textContent = existing ? 'Save changes' : 'Add appointment';
@@ -1063,13 +1356,6 @@
     el.dialogBody.scrollTop = 0;
     el.titleInput.focus();
     el.titleInput.select();
-  }
-
-  function syncStatusButtons() {
-    const current = statusKey(el.form.dataset.status);
-    el.statusButtons.forEach((button) => {
-      button.setAttribute('aria-pressed', String(button.dataset.status === current));
-    });
   }
 
   function openEditorById(id) {
@@ -1200,7 +1486,7 @@
       title,
       phone: el.phoneInput.value.trim(),
       notes: el.notesInput.value.trim(),
-      status: statusKey(el.form.dataset.status),
+      stage: stageKey(el.stageSelect.value) || STAGE_KEYS[0],
     };
 
     if (state.editingId) {
@@ -1271,7 +1557,7 @@
     const theme = resolvedTheme();
     document.documentElement.dataset.theme = theme;
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.content = theme === 'light' ? '#e9edf3' : '#000000';
+    if (meta) meta.content = theme === 'light' ? '#f2f4f9' : '#0a0c11';
   }
 
   function syncThemeToggle() {
@@ -1337,7 +1623,7 @@
     for (const ev of list) {
       const description = [
         ev.phone ? `Phone: ${ev.phone}` : '',
-        statusLabel(ev.status) ? `Hiring status: ${statusLabel(ev.status)}` : '',
+        stageLabel(ev.stage) ? `Stage: ${stageLabel(ev.stage)}` : '',
         ev.notes,
       ].filter(Boolean).join('\n\n');
 
@@ -1444,6 +1730,9 @@
         break;
       case 'print':
         window.print();
+        break;
+      case 'reset-stages':
+        resetStageLabels();
         break;
       case 'export-json':
         exportJSON();
@@ -1559,6 +1848,7 @@
     state.query = '';
     if (el.dockSearch) el.dockSearch.value = '';
     if (state.view === 'month') render({ preserveScroll: true });
+    else if (state.view === 'pipeline') renderPipeline();
     else applySearch();
   }
 
@@ -1630,6 +1920,12 @@
         closeMenu();
         setView('month');
         break;
+      case 'p':
+      case 'P':
+        event.preventDefault();
+        closeMenu();
+        setView('pipeline');
+        break;
       case 'f':
       case 'F':
       case '/':
@@ -1663,6 +1959,7 @@
       el.dockSearch.addEventListener('input', () => {
         state.query = el.dockSearch.value;
         if (state.view === 'month') render({ preserveScroll: true });
+        else if (state.view === 'pipeline') renderPipeline();
         else applySearch();
       });
       el.dockSearch.addEventListener('keydown', (event) => {
@@ -1677,13 +1974,7 @@
       button.addEventListener('click', () => setView(button.dataset.view));
     });
 
-    el.statusButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const value = statusKey(button.dataset.status);
-        el.form.dataset.status = statusKey(el.form.dataset.status) === value ? '' : value;
-        syncStatusButtons();
-      });
-    });
+    // The stage <select> is read on save; no extra wiring needed.
 
     el.nextUpMain.addEventListener('click', () => openEditorById(state.nextUpId));
 
@@ -1708,7 +1999,7 @@
     el.grid.addEventListener('click', (event) => {
       if (!(event.target instanceof Element)) return;
       if (event.target.closest('a')) return;
-      const eventNode = event.target.closest('.event, .md-event');
+      const eventNode = event.target.closest('.event, .md-event, .pipeline-card');
       if (eventNode) {
         openEditorById(eventNode.dataset.id);
         return;
@@ -1731,7 +2022,7 @@
       if (!(event.target instanceof Element)) return;
       if (event.target.closest('a')) return;
       if (event.target.closest('.md-more')) return;
-      const eventNode = event.target.closest('.event, .md-event');
+      const eventNode = event.target.closest('.event, .md-event, .pipeline-card');
       if (eventNode) {
         event.preventDefault();
         openEditorById(eventNode.dataset.id);
@@ -1953,6 +2244,8 @@
 
     syncViewButtons();
     syncClockToggle();
+    buildStageOptions();
+    syncStageMenu();
     applyTheme();
     syncThemeToggle();
     lightQuery.addEventListener('change', () => {
