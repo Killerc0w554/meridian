@@ -1,7 +1,8 @@
 # Project M
 
-A 24-hour appointment calendar that keeps the phone number on the appointment.
-Click a time slot, add the caller, and call them straight from the schedule.
+A 24-hour appointment calendar and hiring pipeline that keeps the phone number
+on every appointment. Click a time slot, add the caller, and call them straight
+from the schedule — or move them through your hiring stages on the board.
 
 No build step, no account, and no cloud. Your calendar stays on this machine.
 
@@ -53,32 +54,43 @@ from the desktop app.
   block, in the "Next up" bar, and in the editor, so one click starts a call on
   a phone or calling-enabled device (or copies the number on a desktop with no
   dialer).
-- **Hiring status** — mark an appointment **Hiring** or **Not hiring** in the
-  editor. Longer appointments show a labelled badge, shorter ones a colored
-  dot, and month chips always carry a dot. The status appears in the "Next up"
-  bar, is included in exported `.ics` files, and can be found with search.
-  Click the selected status again to clear it.
-- **Day, week, and month views** — opens in month view every time; tap a date header to jump into that day.
-  Week view scrolls sideways on small screens with the time column pinned.
-  Month view shows the whole month in one grid; click a day to open it, or a
-  `+N more` link when a day is packed.
+- **Hiring pipeline** — every appointment sits in one of six stages: **Applied,
+  Screen, Interview, Offer, Hired, Rejected**. Pick the stage in the editor, or
+  drag a card between columns on the pipeline board. Longer appointments show a
+  labelled stage badge, shorter ones a colored dot, and month chips always carry
+  a dot. The stage appears in the "Next up" bar, is included in exported `.ics`
+  files, and can be found with search. Appointments saved before the pipeline
+  existed fall into **Applied** and are written back as such when you save them.
+- **Renameable stages** — click a column header on the board to rename it
+  (`Enter` or blur saves, `Esc` cancels, an empty name reverts to the default,
+  24 characters max). Renames are labels only: the underlying stage keys never
+  change, so your appointments, exports, and searches keep working. Restore the
+  originals with **⋯ → Reset stage names**, which appears once you have
+  customized one.
+- **Day, week, month, and pipeline views** — opens in month view every time;
+  tap a date header to jump into that day. Week view scrolls sideways on small
+  screens with the time column pinned. Month view shows the whole month in one
+  grid; click a day to open it, or a `+N more` link when a day is packed. The
+  pipeline board shows one column per stage with a live count, and search
+  filters the board too.
 - **Overlap-aware layout** — conflicting appointments sit side by side, and the
-  editor warns you before you double-book. Use **Save & add another** to book
-  several callers into the same time slot without re-entering the date and time.
+  editor warns you before you double-book. Use **Save & new** to book several
+  callers into the same time slot without re-entering the date and time.
 - **Next up** — the soonest appointment is always one click away, with a Call
   button.
-- **Search** — filter by name, phone number, or notes; matches are highlighted
-  and everything else dims.
+- **Search** — filter by name, phone number, notes, or stage; matches are
+  highlighted and everything else dims.
 - **Notes** — keep an agenda or context on the appointment.
 - **Export** — download one appointment or the whole schedule as an `.ics`
   file for Google Calendar, Apple Calendar, Outlook, etc. Phone numbers go into
-  the event description.
+  the event description and the hiring stage into a `Stage:` property.
 - **Backup and restore** — export/import the whole calendar as JSON.
 - **24-hour clock toggle** — defaults to your locale; switch anytime from the
   ⋯ menu.
 - **Print** — prints a clean paper schedule.
 - **Dark or light** — follows your system theme by default; switch **Light mode**
-  on or off in the ⋯ menu to pin a theme.
+  on or off in the ⋯ menu to pin a theme. The dark theme is layered graphite
+  rather than flat black, and the light theme is paper-white with slate text.
 
 ## Keyboard shortcuts
 
@@ -87,6 +99,7 @@ from the desktop app.
 | `N` | New appointment |
 | `T` | Jump to today |
 | `D` / `W` / `M` | Day / week / month view |
+| `P` | Pipeline board |
 | `←` / `→` | Previous / next day, week, or month |
 | `/` | Open search |
 | `Enter` / `Space` | Open the focused appointment |
@@ -107,7 +120,7 @@ Inside that profile it uses storage keys carried over from the app's original
 name, so existing appointments keep loading:
 
 - `callendar.events.v1`
-- `callendar.settings.v1`
+- `callendar.settings.v1` (clock format, theme, and custom stage names)
 
 The window size is remembered in `~/.config/meridian/window.ini`.
 
