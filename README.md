@@ -6,22 +6,61 @@ from the schedule — or move them through your hiring stages on the board.
 
 No build step, no account, and no cloud. Your calendar stays on this machine.
 
-## Run it
+## Download
 
-Project M is a native desktop app: a GTK window with an embedded WebKit view.
-It needs no browser and no local web server.
-
-Launch it from your app menu (search for **Project M**) or from a terminal:
+Download the [latest release](https://github.com/Killerc0w554/project-m/releases/latest)
+as a `.tar.gz` or `.zip`, or clone the repository:
 
 ```bash
-~/Work/project-m/project-m
+git clone https://github.com/Killerc0w554/project-m.git
+cd project-m
 ```
 
-On this machine the launcher is installed at
-`~/.local/share/applications/project-m.desktop` and the icon at
-`~/.local/share/icons/hicolor/scalable/apps/project-m.svg`.
+No build step and no dependencies to install beyond the system GTK/WebKit
+packages below.
 
-It uses the system `gtk3`, `webkit2gtk-4.1`, and `python-gobject` packages.
+## Requirements
+
+Project M is a native desktop app: a GTK window with an embedded WebKit view.
+It needs no browser and no local web server, and it runs on any Linux desktop
+with Python 3 and the following packages:
+
+| Distro | Packages |
+| --- | --- |
+| Arch | `gtk3 webkit2gtk-4.1 python-gobject` |
+| Debian / Ubuntu | `python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1` |
+| Fedora | `python3-gobject gtk3 webkit2gtk4.1` |
+
+## Install
+
+Run the installer to add **Project M** to your app menu. It needs no root —
+it writes only to your own `~/.local/share`:
+
+```bash
+./install.sh
+```
+
+Then launch **Project M** from your app menu, or run it directly:
+
+```bash
+./project-m
+```
+
+The installer creates
+`~/.local/share/applications/project-m.desktop` and
+`~/.local/share/icons/hicolor/scalable/apps/project-m.svg`, both pointing at
+this checkout — so keep the folder where you cloned it, or re-run
+`./install.sh` after moving it.
+
+### Uninstall
+
+```bash
+rm ~/.local/share/applications/project-m.desktop \
+   ~/.local/share/icons/hicolor/scalable/apps/project-m.svg
+```
+
+Your appointments are stored separately (see
+[Where the data lives](#where-the-data-lives)) and are not touched.
 
 ### Optional: open in a browser
 
@@ -137,6 +176,7 @@ them like any other appointment.
 ## Files
 
 ```
+install.sh                      adds the app launcher and icon for the current user
 project-m launcher (starts the native app)
 project_m_app.py GTK window, callendar:// asset serving, native dialogs
 project-m.svg application icon and logo source
@@ -155,5 +195,10 @@ palettes in `styles.css`.
 
 To remove the desktop integration, delete
 `~/.local/share/applications/project-m.desktop` and
-`~/.local/share/icons/hicolor/scalable/apps/project-m.svg`. The calendar data
-stays in `~/.local/share/meridian/` until you delete that folder too.
+`~/.local/share/icons/hicolor/scalable/apps/project-m.svg` (or run the
+uninstall lines above). The calendar data stays in
+`~/.local/share/meridian/` until you delete that folder too.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
